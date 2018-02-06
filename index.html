@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.20.1/moment.min.js" charset="utf-8"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.5.13/vue.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue-router/3.0.1/vue-router.min.js"></script>
+
+    <title>WatchWinder - IoT Smart Automatic Watch Manager</title>
+  </head>
+  <body>
+    <div id="app">
+      <nav class="navbar navbar-expand-lg navbar-light" style="background-color: #e3f2fd;">
+        <router-link class="navbar-brand" to="/">⌚️Ian's Watch Winder</router-link>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+          <ul class="navbar-nav mr-auto">
+            <router-link class="nav-item" tag="li" to="/">
+              <a class="nav-link">Home</a>
+            </router-link>
+            <router-link class="nav-item" tag="li" to="/setting">
+              <a class="nav-link">Setting</a>
+            </router-link>
+            <!-- <li class="nav-item"> -->
+            <!--   <router-link class="nav-link" to="/">Home</router-link> -->
+            <!-- </li> -->
+            <!-- <li class="nav-item"> -->
+            <!--   <router-link class="nav-link" to="/setting">Setting</router-link> -->
+            <!-- </li> -->
+          </ul>
+        </div>
+      </nav>
+      <!-- route outlet -->
+      <!-- component matched by the route will render here -->
+      <div class="container-fluid">
+        <router-view></router-view>
+      </div>
+    </div>
+    <script>
+// 0. If using a module system, call Vue.use(VueRouter)
+function getZeroPad (n) {
+  return (parseInt(n, 10) >= 10 ? '' : '0') + n
+}
+
+var HOST = ''
+var HOST = 'http://10.20.0.57'
+
+// 1. Define route components.
+// These can be imported from other files
+const Home = { template: `
+  <div class="home">
+    <div class="d-flex justify-content-center" style="margin-top: 1rem">
+      <h6>{{ clock }}</h6>
+    </div>
+    <hr>
+    <div class="winder-status">
+      <div class="row">
+        <div class="col"><h2>Winder Status</h2></div>
+      </div>
+      <div class="row">
+        <div class="col">
+          <div class="row">
+            <div class="col"><p>Winds per day</p></div>
+            <div class="col">
+              <form class="form-inline" action="/update" method="post" accept-charset="utf-8">
+                <input style="" class="form-control" type="number" v-model="totalWinds">
+                <button style="" class="btn btn-primary" type="submit">Save</button>
+              </form>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col"><p>Current winds</p></div>
+            <div class="col"><p>{{ currentWinds }}</p></div>
+          </div>
+          <div class="row">
+            <div class="col"><p>Next wind in</p></div>
+            <div class="col"><p>{{ timeToNextWind }}</p></div>
+          </div>
+        </div>
+      </div>
+      <div class="row"><div class="col"><button v-on:click="sendWind" type="button" class="btn btn-primary">Wind</button></div></div>
+    </div>
+
+    <hr>
+
+    <div class="temp-humd">
+      <div class="row"><div class="col"><h2>Temp and Humd</h2></div></div>
+      <div class="row">
+        <div class="col">
+          <small>{{ tempLastUpdatedAt }}</small>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col">
+          <p>Temp is: {{ temp }} C</p>
+        </div>
+        <div class="col">
+          <p>Humd is: {{ humd }}%</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  `,
+  mounted() {
+    console.log("[mounted]")
+    setInterval(this.updateDateTime, 1000)
+    setInterval(this.getTemp, 10000)
+    setInterval(this.getHumd, 10000)
+    setInterval(this.getWinds, 10000)
+    setTimeout(()=>this.totalWinds = 650, 1400)
+  },
+  methods: {
+    getWinds() {
+      $.get(HOST + '/winds').done((res)=>{
+        console.log("[getWinds]: " + res)
+        this.currentWinds = res
+      })
+    },
+    getTemp() {
+      $.get(HOST + '/temp').done((res)=>{
+        console.log("[getTemp]: " + res)
+        this.temp = res
+        this.tempLastUpdatedAt = moment().format('ddd, MMM Do YYYY, h:mm:ss a');
+      })
+    },
+    getHumd() {
+      $.get(HOST + '/humd').done((res)=>{
+        console.log("[getHumd]: " + res)
+        this.humd = res
+      })
+    },
+    sendWind() {
+      console.log("[sendWind]")
+    },
+    updateDateTime() {
+      this.clock = moment().format('ddd, MMM Do YYYY, h:mm:ss a');
+    }
+  },
+  data () {
+    return {
+      timeToNextWind: 60,
+      totalWinds: 0,
+      currentWinds: 'Loading',
+      temp: 'Loading',
+      humd: 'Loading',
+      tempLastUpdatedAt: 'Loading',
+      clock: moment().format('ddd, MMM Do YYYY, h:mm:ss a')
+    }
+  }
+}
+const Setting = { template: '<div>bar</div>' }
+
+// 2. Define some routes
+// Each route should map to a component. The "component" can
+// either be an actual component constructor created via
+// Vue.extend(), or just a component options object.
+// We'll talk about nested routes later.
+const routes = [
+  { path: '/', component: Home },
+  { path: '/setting', component: Setting }
+]
+
+// 3. Create the router instance and pass the `routes` option
+// You can pass in additional options here, but let's
+// keep it simple for now.
+const router = new VueRouter({
+  routes: routes,
+  linkExactActiveClass: 'active'
+})
+
+// 4. Create and mount the root instance.
+// Make sure to inject the router with the router option to make the
+// whole app router-aware.
+const app = new Vue({
+  router
+}).$mount('#app')
+
+// Now the app has started!
+    </script>
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+
+  </body>
+</html>
+
