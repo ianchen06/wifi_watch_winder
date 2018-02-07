@@ -69,8 +69,8 @@ const Home = { template: `
           <div class="row">
             <div class="col"><p>Winds per day</p></div>
             <div class="col">
-              <form class="form-inline" action="/update" method="post" accept-charset="utf-8">
-                <input style="" class="form-control" type="number" v-model="totalWinds">
+              <form class="form-inline" action="http://10.20.0.57/set_wind" method="post" accept-charset="utf-8">
+                <input style="" class="form-control" type="number" name="totalWindsPerDay" v-model="totalWindsPerDay">
                 <button style="" class="btn btn-primary" type="submit">Save</button>
               </form>
             </div>
@@ -114,7 +114,7 @@ const Home = { template: `
     setInterval(this.getTemp, 10000)
     setInterval(this.getHumd, 10000)
     setInterval(this.getWinds, 10000)
-    setTimeout(()=>this.totalWinds = 650, 1400)
+    setTimeout(()=>this.totalWindsPerDay = 650, 1400)
   },
   methods: {
     getWinds() {
@@ -146,7 +146,7 @@ const Home = { template: `
   data () {
     return {
       timeToNextWind: 60,
-      totalWinds: 0,
+      totalWindsPerDay: 0,
       currentWinds: 'Loading',
       temp: 'Loading',
       humd: 'Loading',

@@ -1,29 +1,26 @@
-#include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
+#include <FS.h>
+#include <Wire.h>
 
-//needed for library
+#include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
-
-#include <FS.h>
-#include <Wire.h>
 #include <AM2320.h>
 
-
+// Stepper motor pins
 #define IN4 14 //GPIO 14
 #define IN3 12 //GPIO 12
 #define IN2 13 //GPIO 13
 #define IN1 15 //GPIO 15
 
-
 ESP8266WebServer server ( 80 );
-// Create an instance of sensor
 AM2320 th;
+
 float humidity, temperature;  // Values read from sensor
 String webString = "";   // String to display
 
-const int NBSTEPS = 4095;
-const int STEPTIME = 900;
+const int NBSTEPS = 4095 * 10;
+const int STEPTIME = 790; //tested fastest speed
 int Step = 0;
 boolean Clockwise = true;
 
@@ -44,64 +41,28 @@ unsigned long lastTime = 0L;
 unsigned long _time = 0L;
 
 unsigned long Timer1 = 0L;
+
+// Interval between stepper rotation
 long Interval1 = 12000;
+
 boolean go = true;
 
 int totalWindsPerDay = 650;
 int currentWinds = 0;
 
 
+// Function prototypes
 void writeStep(int outArray[4]);
 void stepper();
 void setDirection();
-
-
-String getContentType(String filename) {
-  if (server.hasArg("download")) return "application/octet-stream";
-  else if (filename.endsWith(".html.gz")) return "text/html";
-  else if (filename.endsWith(".htm")) return "text/html";
-  else if (filename.endsWith(".html")) return "text/html";
-  else if (filename.endsWith(".css")) return "text/css";
-  else if (filename.endsWith(".js")) return "application/javascript";
-  else if (filename.endsWith(".png")) return "image/png";
-  else if (filename.endsWith(".gif")) return "image/gif";
-  else if (filename.endsWith(".jpg")) return "image/jpeg";
-  else if (filename.endsWith(".ico")) return "image/x-icon";
-  else if (filename.endsWith(".xml")) return "text/xml";
-  else if (filename.endsWith(".pdf")) return "application/x-pdf";
-  else if (filename.endsWith(".zip")) return "application/x-zip";
-  else if (filename.endsWith(".gz")) return "application/x-gzip";
-  return "text/plain";
-}
-
-bool handleFileRead(String path) {
-  Serial.println("handleFileRead: " + path);
-  if (path.endsWith("/")) path += "index.html.gz";
-  String contentType = getContentType(path);
-  String pathWithGz = path + ".gz";   // 路徑結尾加上".gz"
-
-  // 確認請求路徑或者.gz結尾的資源存在
-  if ( SPIFFS.exists(path) || SPIFFS.exists(pathWithGz) ) {
-    if (SPIFFS.exists(pathWithGz)) {
-      path += ".gz";
-    }
-
-    File file = SPIFFS.open(path, "r");
-    server.streamFile(file, contentType);
-    file.close();
-
-    return true;
-  }
-  return false;
-}
+String getContentType(String filename);
+bool handleFileRead(String path);
+void gettemperature();
 
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
-
-
-
   // call sensor.begin() to initialize the library
   Wire.begin(4, 5);
 
@@ -124,7 +85,6 @@ void setup() {
   //or use this for auto generated name ESP + ChipID
   //wifiManager.autoConnect();
 
-
   //if you get here you have connected to the WiFi
   Serial.println("connected...yeey :)");
 
@@ -142,12 +102,22 @@ void setup() {
   }
 
   server.onNotFound([]() {
-    if (!handleFileRead(server.uri())) {
+      if (!handleFileRead(server.uri())) {
       server.sendHeader("Access-Control-Max-Age", "10000");
       server.sendHeader("Access-Control-Allow-Methods", "POST,GET,OPTIONS");
       server.sendHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
       server.send(404, "text/plain", "FileNotFound");
-    }
+      }
+      });
+
+  server.on("/set_wind", []() { // if you add this subdirectory to your webserver call, you get text below :)
+    totalWindsPerDay = server.arg("totalWindsPerDay").toInt();
+    webString = String((int)totalWindsPerDay); // Arduino has a hard time with float to string
+    server.sendHeader("Access-Control-Max-Age", "10000");
+    server.sendHeader("Access-Control-Allow-Methods", "POST,GET,OPTIONS");
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.sendHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    server.send(200, "text/plain", webString);            // send to someones browser when asked
   });
 
   server.on("/winds", []() { // if you add this subdirectory to your webserver call, you get text below :)
@@ -193,7 +163,6 @@ void loop() {
   // put your main code here, to run repeatedly:
   server.handleClient();
 
-
   unsigned long currentMicros;
   unsigned long currentMillis;
 
@@ -213,8 +182,8 @@ void loop() {
     currentMillis = millis();
     Timer1 = currentMillis;
   }
-  Serial.println(_time);
-  Serial.println("Wait...!");
+  //Serial.println(_time);
+  //Serial.println("Wait...!");
   if (stepsLeft <= 0) {
     currentWinds++;
   }
@@ -276,4 +245,43 @@ void setDirection() {
   } else if (Step < 0) {
     Step = 7;
   }
+}
+
+String getContentType(String filename) {
+  if (server.hasArg("download")) return "application/octet-stream";
+  else if (filename.endsWith(".html.gz")) return "text/html";
+  else if (filename.endsWith(".htm")) return "text/html";
+  else if (filename.endsWith(".html")) return "text/html";
+  else if (filename.endsWith(".css")) return "text/css";
+  else if (filename.endsWith(".js")) return "application/javascript";
+  else if (filename.endsWith(".png")) return "image/png";
+  else if (filename.endsWith(".gif")) return "image/gif";
+  else if (filename.endsWith(".jpg")) return "image/jpeg";
+  else if (filename.endsWith(".ico")) return "image/x-icon";
+  else if (filename.endsWith(".xml")) return "text/xml";
+  else if (filename.endsWith(".pdf")) return "application/x-pdf";
+  else if (filename.endsWith(".zip")) return "application/x-zip";
+  else if (filename.endsWith(".gz")) return "application/x-gzip";
+  return "text/plain";
+}
+
+bool handleFileRead(String path) {
+  Serial.println("handleFileRead: " + path);
+  if (path.endsWith("/")) path += "index.html.gz";
+  String contentType = getContentType(path);
+  String pathWithGz = path + ".gz";   // 路徑結尾加上".gz"
+
+  // 確認請求路徑或者.gz結尾的資源存在
+  if ( SPIFFS.exists(path) || SPIFFS.exists(pathWithGz) ) {
+    if (SPIFFS.exists(pathWithGz)) {
+      path += ".gz";
+    }
+
+    File file = SPIFFS.open(path, "r");
+    server.streamFile(file, contentType);
+    file.close();
+
+    return true;
+  }
+  return false;
 }
