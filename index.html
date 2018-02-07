@@ -7,7 +7,7 @@
 
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.20.1/moment.min.js" charset="utf-8"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.5.13/vue.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.5.13/vue.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vue-router/3.0.1/vue-router.min.js"></script>
 
     <title>WatchWinder - IoT Smart Automatic Watch Manager</title>
@@ -69,7 +69,7 @@ const Home = { template: `
           <div class="row">
             <div class="col"><p>Winds per day</p></div>
             <div class="col">
-              <form class="form-inline" action="http://10.20.0.57/set_wind" method="post" accept-charset="utf-8">
+              <form @submit="setTotalWindsPerDay" class="form-inline" action="http://10.20.0.57/set_wind" method="post" accept-charset="utf-8">
                 <input style="" class="form-control" type="number" name="totalWindsPerDay" v-model="totalWindsPerDay">
                 <button style="" class="btn btn-primary" type="submit">Save</button>
               </form>
@@ -117,6 +117,15 @@ const Home = { template: `
     setTimeout(()=>this.totalWindsPerDay = 650, 1400)
   },
   methods: {
+    setTotalWindsPerDay(e) {
+      e.preventDefault()
+      $.ajax({
+        type: 'POST',
+        url: HOST + '/set_wind',
+        data: $(e.target).serialize(),
+        success: (res)=>{console.log(res)}
+      })
+    },
     getWinds() {
       $.get(HOST + '/winds').done((res)=>{
         console.log("[getWinds]: " + res)
